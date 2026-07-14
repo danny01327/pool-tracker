@@ -21,6 +21,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
+      // Email confirmation/magic-link redirects land back here with
+      // "#access_token=..." or "?code=..." in the URL. HashRouter treats
+      // everything after "#" as a route, so leaving it in place makes the
+      // app render blank until the next navigation. Strip it back to a
+      // clean URL now that the session above has already picked it up.
+      const hasAuthCallback = window.location.hash.includes('access_token') || window.location.search.includes('code=')
+      if (hasAuthCallback) {
+        window.history.replaceState(null, '', window.location.pathname)
+      }
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
@@ -29,7 +38,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
+    })
     return { error: error?.message ?? null }
   }
 
