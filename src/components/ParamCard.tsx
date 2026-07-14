@@ -26,6 +26,9 @@ export default function ParamCard({ assessment }: { assessment: ParamAssessment 
         {assessment.value !== undefined ? round1(assessment.value) : '—'}
         <span className="text-sm font-normal ml-1 text-gray-500">{assessment.unit}</span>
       </div>
+      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+        Target: {round1(assessment.targetMin)}–{round1(assessment.targetMax)} {assessment.unit}
+      </p>
       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{assessment.message}</p>
     </div>
   )

@@ -2,9 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
 
-function toLocalDatetimeInput(d: Date): string {
+function toLocalDateInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function toLocalTimeInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function numOrUndef(v: string): number | undefined {
@@ -17,7 +22,8 @@ export default function LogTest() {
   const { activePool, addTest } = useAppData()
   const navigate = useNavigate()
 
-  const [timestamp, setTimestamp] = useState(toLocalDatetimeInput(new Date()))
+  const [date, setDate] = useState(toLocalDateInput(new Date()))
+  const [time, setTime] = useState(toLocalTimeInput(new Date()))
   const [fc, setFc] = useState('')
   const [cc, setCc] = useState('')
   const [ph, setPh] = useState('')
@@ -40,7 +46,7 @@ export default function LogTest() {
     try {
       await addTest({
         poolId: activePool.id,
-        timestamp: new Date(timestamp).toISOString(),
+        timestamp: new Date(`${date}T${time}`).toISOString(),
         fc: numOrUndef(fc),
         cc: numOrUndef(cc),
         ph: numOrUndef(ph),
@@ -62,7 +68,7 @@ export default function LogTest() {
   const field = (id: string, label: string, value: string, setValue: (v: string) => void, unit: string, step = '0.1') => (
     <div>
       <label htmlFor={id} className="block text-sm font-medium mb-1">
-        {label} <span className="text-gray-400 font-normal">({unit})</span>
+        {label} {unit && <span className="text-gray-400 font-normal">({unit})</span>}
       </label>
       <input
         id={id}
@@ -79,14 +85,31 @@ export default function LogTest() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
       <h1 className="text-xl font-semibold">Log a test</h1>
-      <div>
-        <label className="block text-sm font-medium mb-1">Date &amp; time</label>
-        <input
-          type="datetime-local"
-          className="w-full rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2"
-          value={timestamp}
-          onChange={(e) => setTimestamp(e.target.value)}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="field-date" className="block text-sm font-medium mb-1">
+            Date
+          </label>
+          <input
+            id="field-date"
+            type="date"
+            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="field-time" className="block text-sm font-medium mb-1">
+            Time
+          </label>
+          <input
+            id="field-time"
+            type="time"
+            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {field('field-fc', 'Free Chlorine (FC)', fc, setFc, 'ppm')}

@@ -13,12 +13,12 @@ const tabs = [
   { to: '/settings', label: 'Settings' },
 ]
 
-const THEME_ICON = { system: '🖥️', light: '☀️', dark: '🌙' }
-const THEME_LABEL = { system: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' }
+const THEME_ICON = { light: '☀️', dark: '🌙' }
+const THEME_LABEL = { light: 'Switch to dark mode', dark: 'Switch to light mode' }
 
 export default function Layout() {
   const { data, activePool, setActivePoolId, pendingSyncCount, retrySync } = useAppData()
-  const { theme, cycleTheme } = useTheme()
+  const { resolvedTheme, cycleTheme } = useTheme()
   const [online, setOnline] = useState(() => navigator.onLine)
 
   useEffect(() => {
@@ -53,11 +53,11 @@ export default function Layout() {
           <button
             type="button"
             onClick={cycleTheme}
-            title={THEME_LABEL[theme]}
-            aria-label={THEME_LABEL[theme]}
+            title={THEME_LABEL[resolvedTheme]}
+            aria-label={THEME_LABEL[resolvedTheme]}
             className="shrink-0 rounded border border-gray-300 dark:border-gray-600 w-9 h-9 flex items-center justify-center text-base"
           >
-            {THEME_ICON[theme]}
+            {THEME_ICON[resolvedTheme]}
           </button>
         </div>
       </header>

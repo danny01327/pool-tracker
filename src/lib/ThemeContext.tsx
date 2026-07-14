@@ -57,7 +57,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   function cycleTheme() {
-    setThemeState((t) => (t === 'system' ? 'light' : t === 'light' ? 'dark' : 'system'))
+    // A straight light<->dark flip based on what's currently showing, rather
+    // than cycling through system/light/dark. When the OS is already in
+    // light mode, system and light look identical, so a 3-way cycle made it
+    // seem like the button did nothing on the first click.
+    setThemeState(resolve(theme) === 'dark' ? 'light' : 'dark')
   }
 
   return <ThemeCtx.Provider value={{ theme, resolvedTheme, setTheme, cycleTheme }}>{children}</ThemeCtx.Provider>
