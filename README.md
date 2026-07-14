@@ -21,7 +21,7 @@ Test history is stored in a Supabase (Postgres) database, scoped to your account
 2. In the Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql) once to create the tables and security policies.
 3. In Project Settings → API, copy the **Project URL** and **anon public** key.
 4. Copy `.env.example` to `.env.local` and fill in those two values.
-5. For the deployed GitHub Pages build, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets (Settings → Secrets and variables → Actions) — the deploy workflow reads them from there.
+5. For the deployed Netlify site, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables (`netlify env:set NAME value`, or Site configuration → Environment variables in the dashboard) — the build reads them from there.
 
 ## Development
 
@@ -35,4 +35,13 @@ npm run dev
 ```bash
 npm run build
 npm run preview
+```
+
+## Deploy
+
+Deployed on Netlify at **[pool-boy-app.netlify.app](https://pool-boy-app.netlify.app)**. To ship a change:
+
+```bash
+npm run build
+npx netlify deploy --prod --dir=dist
 ```
