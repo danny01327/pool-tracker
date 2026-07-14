@@ -71,8 +71,11 @@ export function round1(n: number): number {
 export const PH_TARGET = { min: 7.2, max: 7.8, idealLow: 7.4, idealHigh: 7.6 }
 
 export function getTaTarget(profile: PoolProfile) {
-  if (profile.sanitizerType === 'salt') return { min: 50, max: 70, idealLow: 60, idealHigh: 70 }
-  return { min: 50, max: 90, idealLow: 60, idealHigh: 70 }
+  // TFP lowered its TA floor from 50 to 60 (as of their current guidance):
+  // it still slows pH creep on liquid-chlorine/SWG pools without acid use
+  // being so finicky that TA keeps dropping out of range.
+  if (profile.sanitizerType === 'salt') return { min: 60, max: 80, idealLow: 65, idealHigh: 75 }
+  return { min: 60, max: 90, idealLow: 70, idealHigh: 80 }
 }
 
 export function getChTarget(profile: PoolProfile) {
@@ -81,8 +84,11 @@ export function getChTarget(profile: PoolProfile) {
 }
 
 export function getCyaTarget(profile: PoolProfile) {
-  if (profile.sanitizerType === 'salt') return { min: 60, max: 80, idealLow: 70, idealHigh: 80 }
-  return { min: 30, max: 50, idealLow: 30, idealHigh: 40 }
+  // TFP's current ranges: SWG pools run higher CYA (60-90) since the
+  // generator adds chlorine continuously, so the higher FC demand from more
+  // CYA isn't a problem the way it would be for once-a-day liquid dosing.
+  if (profile.sanitizerType === 'salt') return { min: 60, max: 90, idealLow: 70, idealHigh: 80 }
+  return { min: 30, max: 60, idealLow: 30, idealHigh: 50 }
 }
 
 export const BORATES_TARGET = { min: 30, max: 50, idealLow: 30, idealHigh: 50 }
