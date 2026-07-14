@@ -1,16 +1,46 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppData } from '../lib/AppDataContext'
 import { useAuth } from '../lib/AuthContext'
 import PoolForm from '../components/PoolForm'
 import { exportDataAsJson, importDataFromJson, testsForPool } from '../lib/storage'
 import { exportTestsAsCsv, exportTestsAsPdf } from '../lib/reportExport'
+import { getSubscriptionState, isPushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/pushNotifications'
 
 export default function Settings() {
   const { data, activePool, updatePool, addPool, deletePool, setActivePoolId, importBackup } = useAppData()
   const { user, signOut } = useAuth()
   const [addingPool, setAddingPool] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [pushState, setPushState] = useState<'subscribed' | 'unsubscribed' | 'denied' | 'unsupported' | 'loading'>('loading')
+  const [pushBusy, setPushBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isPushSupported()) {
+      getSubscriptionState().then(setPushState)
+    } else {
+      setPushState('unsupported')
+    }
+  }, [])
+
+  async function handlePushToggle() {
+    if (!user) return
+    setPushBusy(true)
+    try {
+      if (pushState === 'subscribed') {
+        await unsubscribeFromPush()
+        setPushState('unsubscribed')
+      } else {
+        await subscribeToPush(user.id)
+        setPushState('subscribed')
+      }
+    } catch (err: any) {
+      alert(`Couldn't update notification settings: ${err.message ?? err}`)
+      setPushState(await getSubscriptionState())
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   function handleExport() {
     const json = exportDataAsJson(data)
@@ -164,6 +194,37 @@ export default function Settings() {
           A spreadsheet-friendly CSV or a printable PDF report of {activePool.name}'s test history — handy for a pool
           service tech, a home sale, or your own records.
         </p>
+      </div>
+
+      <div>
+        <h2 className="font-medium mb-2">Notifications</h2>
+        {pushState === 'unsupported' && (
+          <p className="text-sm text-gray-500">
+            Push notifications aren't supported in this browser. Try installing the app to your home screen first, or
+            use a different browser.
+          </p>
+        )}
+        {pushState === 'denied' && (
+          <p className="text-sm text-gray-500">
+            Notifications are blocked for this site in your browser settings. Enable them there to get test-due and
+            SLAM retest reminders.
+          </p>
+        )}
+        {(pushState === 'subscribed' || pushState === 'unsubscribed' || pushState === 'loading') && (
+          <>
+            <button
+              onClick={handlePushToggle}
+              disabled={pushBusy || pushState === 'loading'}
+              className="rounded border border-gray-300 dark:border-gray-600 px-4 py-2 disabled:opacity-60"
+            >
+              {pushState === 'subscribed' ? 'Disable push notifications' : 'Enable push notifications'}
+            </button>
+            <p className="text-xs text-gray-500 mt-2">
+              Get notified on this device when it's been a few days since your last test, or when a SLAM retest is
+              due — even if the app isn't open.
+            </p>
+          </>
+        )}
       </div>
 
       <div>

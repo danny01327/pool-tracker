@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pool-tracker-v3'
+const CACHE_NAME = 'pool-tracker-v4'
 const SCOPE = self.registration.scope
 const APP_SHELL = [SCOPE, `${SCOPE}index.html`, `${SCOPE}manifest.webmanifest`, `${SCOPE}favicon-32.png`]
 
@@ -31,6 +31,39 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached)
       return cached || network
+    }),
+  )
+})
+
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Pool Boy', body: 'You have a new reminder.', url: '/' }
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() }
+  } catch {
+    // ignore malformed payloads, fall back to defaults
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: `${SCOPE}icon-192.png`,
+      badge: `${SCOPE}favicon-32.png`,
+      data: { url: payload.url },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url ?? '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(SCOPE) && 'focus' in client) {
+          client.navigate(url)
+          return client.focus()
+        }
+      }
+      return self.clients.openWindow(url)
     }),
   )
 })
