@@ -1,6 +1,6 @@
 {
-  "name": "Pool Tracker",
-  "short_name": "Pool Tracker",
+  "name": "Pool Boy",
+  "short_name": "Pool Boy",
   "description": "Log pool test results and get Trouble Free Pool method balancing recommendations.",
   "start_url": "/pool-tracker/",
   "scope": "/pool-tracker/",

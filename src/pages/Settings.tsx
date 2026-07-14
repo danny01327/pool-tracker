@@ -16,7 +16,7 @@ export default function Settings() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `pool-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `pool-boy-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -32,7 +32,7 @@ export default function Settings() {
           importBackup(imported).catch((err) => alert(`Import failed: ${err.message ?? err}`))
         }
       } catch {
-        alert('Could not read that file — is it a valid Pool Tracker backup?')
+        alert('Could not read that file — is it a valid Pool Boy backup?')
       }
     }
     reader.readAsText(file)

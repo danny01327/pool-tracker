@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
+import AppLogo from '../components/AppLogo'
 
 export default function Login() {
   const { signIn, signUp } = useAuth()
@@ -27,7 +28,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <div className="max-w-sm w-full space-y-4">
-        <h1 className="text-2xl font-semibold text-center">🏊 Pool Tracker</h1>
+        <AppLogo iconSize={40} textClassName="text-2xl" className="justify-center" />
         <p className="text-center text-gray-600 dark:text-gray-400">
           {mode === 'signin' ? 'Sign in to your account.' : 'Create an account to get started.'}
         </p>

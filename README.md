@@ -1,4 +1,4 @@
-# Pool Tracker
+# Pool Boy
 
 A pool test log and balancing assistant based on the [Trouble Free Pool (TFP)](https://www.troublefreepool.com/) method.
 

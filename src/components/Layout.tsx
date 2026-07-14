@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
 import { useTheme } from '../lib/ThemeContext'
+import AppLogo from './AppLogo'
 
 const tabs = [
   { to: '/', label: 'Dashboard', end: true },
@@ -21,10 +22,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 font-semibold text-lg shrink-0">
-          <span>🏊</span>
-          <span>Pool Tracker</span>
-        </div>
+        <AppLogo className="shrink-0" />
         <div className="flex items-center gap-2 min-w-0">
           {data.pools.length > 1 && (
             <select
