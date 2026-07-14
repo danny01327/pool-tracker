@@ -4,14 +4,17 @@ import { HashRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { AppDataProvider } from './lib/AppDataContext'
+import { ThemeProvider } from './lib/ThemeContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HashRouter>
-      <AppDataProvider>
-        <App />
-      </AppDataProvider>
-    </HashRouter>
+    <ThemeProvider>
+      <HashRouter>
+        <AppDataProvider>
+          <App />
+        </AppDataProvider>
+      </HashRouter>
+    </ThemeProvider>
   </StrictMode>,
 )
 

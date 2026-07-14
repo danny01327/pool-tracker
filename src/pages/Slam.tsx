@@ -117,7 +117,7 @@ export default function Slam() {
 
       <div className="space-y-3 rounded-lg border border-gray-200 dark:border-gray-800 p-3">
         <h2 className="font-medium">Add today's check</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">FC (ppm)</label>
             <input

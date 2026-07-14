@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
+import { useTheme } from '../lib/ThemeContext'
 
 const tabs = [
   { to: '/', label: 'Dashboard', end: true },
@@ -10,29 +11,44 @@ const tabs = [
   { to: '/settings', label: 'Settings' },
 ]
 
+const THEME_ICON = { system: '🖥️', light: '☀️', dark: '🌙' }
+const THEME_LABEL = { system: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' }
+
 export default function Layout() {
   const { data, activePool, setActivePoolId } = useAppData()
+  const { theme, cycleTheme } = useTheme()
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-      <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 font-semibold text-lg">
+      <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 font-semibold text-lg shrink-0">
           <span>🏊</span>
           <span>Pool Tracker</span>
         </div>
-        {data.pools.length > 1 && (
-          <select
-            className="rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1 text-sm"
-            value={activePool?.id ?? ''}
-            onChange={(e) => setActivePoolId(e.target.value)}
+        <div className="flex items-center gap-2 min-w-0">
+          {data.pools.length > 1 && (
+            <select
+              className="min-w-0 max-w-[9rem] rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1 text-sm"
+              value={activePool?.id ?? ''}
+              onChange={(e) => setActivePoolId(e.target.value)}
+            >
+              {data.pools.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={cycleTheme}
+            title={THEME_LABEL[theme]}
+            aria-label={THEME_LABEL[theme]}
+            className="shrink-0 rounded border border-gray-300 dark:border-gray-600 w-9 h-9 flex items-center justify-center text-base"
           >
-            {data.pools.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
+            {THEME_ICON[theme]}
+          </button>
+        </div>
       </header>
       <nav className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-800 text-sm">
         {tabs.map((tab) => (

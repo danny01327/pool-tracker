@@ -211,7 +211,7 @@ export default function DosingCalculator() {
       </div>
 
       {param !== 'shock' && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Current level</label>
             <input type="number" step="0.1" className={inputClass} value={current} onChange={(e) => setCurrent(e.target.value)} />

@@ -104,7 +104,7 @@ export default function Settings() {
 
       <div>
         <h2 className="font-medium mb-2">Backup &amp; restore</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={handleExport} className="rounded border border-gray-300 dark:border-gray-600 px-4 py-2">
             Export data (JSON)
           </button>

@@ -80,7 +80,7 @@ export default function LogTest() {
           onChange={(e) => setTimestamp(e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {field('field-fc', 'Free Chlorine (FC)', fc, setFc, 'ppm')}
         {field('field-cc', 'Combined Chlorine (CC)', cc, setCc, 'ppm')}
         {field('field-ph', 'pH', ph, setPh, '')}
