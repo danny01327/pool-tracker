@@ -28,7 +28,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <div className="max-w-sm w-full space-y-4">
-        <AppLogo iconSize={40} textClassName="text-2xl" className="justify-center" />
+        <div className="text-center">
+          <AppLogo heightClass="h-16" />
+        </div>
         <p className="text-center text-gray-600 dark:text-gray-400">
           {mode === 'signin' ? 'Sign in to your account.' : 'Create an account to get started.'}
         </p>

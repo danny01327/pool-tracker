@@ -1,20 +1,18 @@
 interface AppLogoProps {
-  iconSize?: number
-  textClassName?: string
+  heightClass?: string
   className?: string
 }
 
-export default function AppLogo({ iconSize = 28, textClassName = 'text-lg', className = '' }: AppLogoProps) {
+export default function AppLogo({ heightClass = 'h-10', className = '' }: AppLogoProps) {
   return (
-    <div className={`flex items-center gap-2 font-semibold ${className}`}>
+    <span
+      className={`inline-flex items-center bg-white rounded-lg border border-gray-200 px-2 py-1 ${className}`}
+    >
       <img
-        src={`${import.meta.env.BASE_URL}icon-192.png`}
-        alt="Pool Boy"
-        width={iconSize}
-        height={iconSize}
-        className="rounded-md"
+        src={`${import.meta.env.BASE_URL}header-logo.png`}
+        alt="Pool Boy App"
+        className={`${heightClass} w-auto`}
       />
-      <span className={textClassName}>Pool Boy</span>
-    </div>
+    </span>
   )
 }
