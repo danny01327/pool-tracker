@@ -1,5 +1,6 @@
-const CACHE_NAME = 'pool-tracker-v1'
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg']
+const CACHE_NAME = 'pool-tracker-v2'
+const SCOPE = self.registration.scope
+const APP_SHELL = [SCOPE, `${SCOPE}index.html`, `${SCOPE}manifest.webmanifest`, `${SCOPE}favicon.svg`]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))

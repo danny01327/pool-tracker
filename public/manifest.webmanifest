@@ -2,13 +2,14 @@
   "name": "Pool Tracker",
   "short_name": "Pool Tracker",
   "description": "Log pool test results and get Trouble Free Pool method balancing recommendations.",
-  "start_url": "/",
+  "start_url": "/pool-tracker/",
+  "scope": "/pool-tracker/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0284c7",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/pool-tracker/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
