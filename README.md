@@ -12,6 +12,10 @@ A pool test log and balancing assistant based on the [Trouble Free Pool (TFP)](h
 - **Trends** — charts of FC, pH, CYA, TA, CH (and salt) over time.
 - **SLAM tracker** — guided algae-clearing process with daily checks and the three TFP exit criteria (OCLT, CC, water clarity).
 - **Multiple pools**, JSON export/import for backup, dark mode, installable as a PWA.
+- **Offline-friendly** — logging a test or starting a SLAM session with no signal queues the write locally and syncs automatically once you're back online.
+- **Reminders** — a dashboard nudge when it's been too long since your last test, plus a live "next retest due" countdown during a SLAM.
+- **Weather-aware tips** — current temp and rain chance for your location, with a note when heat or rain calls for extra testing.
+- **Trend anomaly flags** — calls out a reading that's a big jump from your pool's own recent average, in case it's a typo or an early warning sign.
 
 Test history is stored in a Supabase (Postgres) database, scoped to your account via Row Level Security — it syncs across any device you sign into.
 

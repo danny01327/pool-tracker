@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { v4 as uuid } from 'uuid'
 import type { AppData, PoolProfile, TestEntry, SlamSession } from '../types'
 import { supabase } from './supabaseClient'
 import { useAuth } from './AuthContext'
+import { enqueueOp, isNetworkError, loadQueue, saveQueue, type QueuedOp, type QueuedTable } from './offlineQueue'
 
 const ACTIVE_POOL_KEY = 'pool-tracker:activePoolId'
 
@@ -90,9 +92,23 @@ function emptyData(): AppData {
   return { pools: [], activePoolId: null, tests: [], slamSessions: [] }
 }
 
+async function performOp(op: QueuedOp): Promise<void> {
+  if (op.action === 'insert') {
+    const { error } = await supabase.from(op.table).insert(op.data!)
+    if (error) throw error
+  } else if (op.action === 'update') {
+    const { error } = await supabase.from(op.table).update(op.data!).eq('id', op.rowId)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from(op.table).delete().eq('id', op.rowId)
+    if (error) throw error
+  }
+}
+
 interface AppDataApi {
   data: AppData
   loading: boolean
+  pendingSyncCount: number
   activePool: PoolProfile | undefined
   setActivePoolId: (id: string) => void
   addPool: (pool: Omit<PoolProfile, 'id' | 'createdAt'>) => Promise<PoolProfile>
@@ -105,6 +121,7 @@ interface AppDataApi {
   updateSlamSession: (id: string, updates: Partial<SlamSession>) => Promise<void>
   importBackup: (imported: AppData) => Promise<void>
   refresh: () => Promise<void>
+  retrySync: () => Promise<void>
 }
 
 const AppDataCtx = createContext<AppDataApi | null>(null)
@@ -113,6 +130,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [data, setData] = useState<AppData>(() => emptyData())
   const [loading, setLoading] = useState(true)
+  const [pendingSyncCount, setPendingSyncCount] = useState(() => loadQueue().length)
+  const flushingRef = useRef(false)
 
   async function fetchAll() {
     if (!user) {
@@ -143,8 +162,43 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }
 
+  async function flushQueue() {
+    if (flushingRef.current || !navigator.onLine) return
+    flushingRef.current = true
+    let processedAny = false
+    try {
+      let queue = loadQueue()
+      while (queue.length > 0) {
+        const op = queue[0]
+        try {
+          await performOp(op)
+          processedAny = true
+        } catch (err) {
+          if (isNetworkError(err)) break
+          console.error('Dropping queued operation that failed for a non-network reason', op, err)
+        }
+        queue = queue.slice(1)
+        saveQueue(queue)
+      }
+    } finally {
+      flushingRef.current = false
+      setPendingSyncCount(loadQueue().length)
+      if (processedAny) await fetchAll()
+    }
+  }
+
   useEffect(() => {
-    fetchAll()
+    fetchAll().then(() => flushQueue())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  useEffect(() => {
+    window.addEventListener('online', flushQueue)
+    const interval = setInterval(flushQueue, 30000)
+    return () => {
+      window.removeEventListener('online', flushQueue)
+      clearInterval(interval)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
@@ -155,29 +209,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setData((d) => ({ ...d, activePoolId: id }))
   }
 
+  /** Try a write immediately; if it fails for network reasons, queue it for later instead of throwing. */
+  async function writeOrQueue(table: QueuedTable, action: QueuedOp['action'], rowId: string, opData?: Record<string, unknown>) {
+    const op: QueuedOp = { id: uuid(), table, action, rowId, data: opData }
+    try {
+      await performOp(op)
+    } catch (err) {
+      if (!isNetworkError(err)) throw err
+      enqueueOp(op)
+      setPendingSyncCount(loadQueue().length)
+    }
+  }
+
   async function addPool(pool: Omit<PoolProfile, 'id' | 'createdAt'>) {
     if (!user) throw new Error('Not signed in')
-    const { data: row, error } = await supabase
-      .from('pools')
-      .insert({ ...poolToRow(pool), user_id: user.id })
-      .select()
-      .single()
-    if (error || !row) throw error ?? new Error('Failed to create pool')
-    const newPool = poolFromRow(row)
+    const id = uuid()
+    const createdAt = new Date().toISOString()
+    const newPool: PoolProfile = { ...pool, id, createdAt }
     setData((d) => ({ ...d, pools: [...d.pools, newPool], activePoolId: d.activePoolId ?? newPool.id }))
     if (!data.activePoolId) localStorage.setItem(ACTIVE_POOL_KEY, newPool.id)
+    await writeOrQueue('pools', 'insert', id, { ...poolToRow(pool), id, user_id: user.id, created_at: createdAt })
     return newPool
   }
 
   async function updatePool(id: string, updates: Partial<PoolProfile>) {
-    const { error } = await supabase.from('pools').update(poolToRow(updates)).eq('id', id)
-    if (error) throw error
     setData((d) => ({ ...d, pools: d.pools.map((p) => (p.id === id ? { ...p, ...updates } : p)) }))
+    await writeOrQueue('pools', 'update', id, poolToRow(updates))
   }
 
   async function deletePool(id: string) {
-    const { error } = await supabase.from('pools').delete().eq('id', id)
-    if (error) throw error
     setData((d) => {
       const pools = d.pools.filter((p) => p.id !== id)
       const activePoolId = d.activePoolId === id ? (pools[0]?.id ?? null) : d.activePoolId
@@ -190,53 +250,50 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         activePoolId,
       }
     })
+    await writeOrQueue('pools', 'delete', id)
   }
 
   async function addTest(test: Omit<TestEntry, 'id'>) {
     if (!user) throw new Error('Not signed in')
-    const { data: row, error } = await supabase
-      .from('tests')
-      .insert({ ...testToRow(test), user_id: user.id })
-      .select()
-      .single()
-    if (error || !row) throw error ?? new Error('Failed to save test')
-    const newTest = testFromRow(row)
+    const id = uuid()
+    const newTest: TestEntry = { ...test, id }
     setData((d) => ({ ...d, tests: [...d.tests, newTest] }))
+    await writeOrQueue('tests', 'insert', id, { ...testToRow(test), id, user_id: user.id })
     return newTest
   }
 
   async function updateTest(id: string, updates: Partial<TestEntry>) {
-    const { error } = await supabase.from('tests').update(testToRow(updates)).eq('id', id)
-    if (error) throw error
     setData((d) => ({ ...d, tests: d.tests.map((t) => (t.id === id ? { ...t, ...updates } : t)) }))
+    await writeOrQueue('tests', 'update', id, testToRow(updates))
   }
 
   async function deleteTest(id: string) {
-    const { error } = await supabase.from('tests').delete().eq('id', id)
-    if (error) throw error
     setData((d) => ({ ...d, tests: d.tests.filter((t) => t.id !== id) }))
+    await writeOrQueue('tests', 'delete', id)
   }
 
   async function startSlamSession(poolId: string, cyaAtStart: number) {
     if (!user) throw new Error('Not signed in')
-    const { data: row, error } = await supabase
-      .from('slam_sessions')
-      .insert({ pool_id: poolId, cya_at_start: cyaAtStart, user_id: user.id })
-      .select()
-      .single()
-    if (error || !row) throw error ?? new Error('Failed to start SLAM session')
-    const session = slamFromRow(row)
+    const id = uuid()
+    const startedAt = new Date().toISOString()
+    const session: SlamSession = { id, poolId, startedAt, cyaAtStart, dailyChecks: [] }
     setData((d) => ({ ...d, slamSessions: [...d.slamSessions, session] }))
+    await writeOrQueue('slam_sessions', 'insert', id, {
+      id,
+      pool_id: poolId,
+      cya_at_start: cyaAtStart,
+      started_at: startedAt,
+      user_id: user.id,
+    })
     return session
   }
 
   async function updateSlamSession(id: string, updates: Partial<SlamSession>) {
-    const { error } = await supabase.from('slam_sessions').update(slamToRow(updates)).eq('id', id)
-    if (error) throw error
     setData((d) => ({
       ...d,
       slamSessions: d.slamSessions.map((s) => (s.id === id ? { ...s, ...updates } : s)),
     }))
+    await writeOrQueue('slam_sessions', 'update', id, slamToRow(updates))
   }
 
   async function importBackup(imported: AppData) {
@@ -273,6 +330,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const api: AppDataApi = {
     data,
     loading,
+    pendingSyncCount,
     activePool,
     setActivePoolId,
     addPool,
@@ -285,6 +343,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     updateSlamSession,
     importBackup,
     refresh: fetchAll,
+    retrySync: flushQueue,
   }
 
   return <AppDataCtx.Provider value={api}>{children}</AppDataCtx.Provider>
