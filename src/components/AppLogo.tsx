@@ -8,7 +8,7 @@ export default function AppLogo({ iconSize = 28, textClassName = 'text-lg', clas
   return (
     <div className={`flex items-center gap-2 font-semibold ${className}`}>
       <img
-        src={`${import.meta.env.BASE_URL}favicon.svg`}
+        src={`${import.meta.env.BASE_URL}icon-192.png`}
         alt="Pool Boy"
         width={iconSize}
         height={iconSize}
