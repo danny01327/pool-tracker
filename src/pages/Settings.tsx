@@ -2,12 +2,14 @@ import { useRef, useState } from 'react'
 import { useAppData } from '../lib/AppDataContext'
 import { useAuth } from '../lib/AuthContext'
 import PoolForm from '../components/PoolForm'
-import { exportDataAsJson, importDataFromJson } from '../lib/storage'
+import { exportDataAsJson, importDataFromJson, testsForPool } from '../lib/storage'
+import { exportTestsAsCsv, exportTestsAsPdf } from '../lib/reportExport'
 
 export default function Settings() {
   const { data, activePool, updatePool, addPool, deletePool, setActivePoolId, importBackup } = useAppData()
   const { user, signOut } = useAuth()
   const [addingPool, setAddingPool] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleExport() {
@@ -37,6 +39,23 @@ export default function Settings() {
     }
     reader.readAsText(file)
     e.target.value = ''
+  }
+
+  function handleCsvExport() {
+    if (!activePool) return
+    exportTestsAsCsv(activePool, testsForPool(data, activePool.id))
+  }
+
+  async function handlePdfExport() {
+    if (!activePool) return
+    setExportingPdf(true)
+    try {
+      await exportTestsAsPdf(activePool, testsForPool(data, activePool.id))
+    } catch (err: any) {
+      alert(`PDF export failed: ${err.message ?? err}`)
+    } finally {
+      setExportingPdf(false)
+    }
   }
 
   if (!activePool) return null
@@ -124,6 +143,26 @@ export default function Settings() {
         <p className="text-xs text-gray-500 mt-2">
           Your test history is stored in your account and synced across any device you sign in on. Export a backup
           occasionally as an extra safety net.
+        </p>
+      </div>
+
+      <div>
+        <h2 className="font-medium mb-2">Reports</h2>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handleCsvExport} className="rounded border border-gray-300 dark:border-gray-600 px-4 py-2">
+            Export CSV
+          </button>
+          <button
+            onClick={handlePdfExport}
+            disabled={exportingPdf}
+            className="rounded border border-gray-300 dark:border-gray-600 px-4 py-2 disabled:opacity-60"
+          >
+            {exportingPdf ? 'Generating…' : 'Export PDF'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          A spreadsheet-friendly CSV or a printable PDF report of {activePool.name}'s test history — handy for a pool
+          service tech, a home sale, or your own records.
         </p>
       </div>
 
