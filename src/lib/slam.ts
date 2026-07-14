@@ -41,3 +41,14 @@ export function daysInSlam(session: SlamSession): number {
   const end = session.completedAt ? new Date(session.completedAt).getTime() : Date.now()
   return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)))
 }
+
+const RETEST_INTERVAL_MS = 2 * 60 * 60 * 1000
+
+/** TFP calls for retesting FC every ~2 hours during daylight while SLAMing. */
+export function getNextRetestDue(session: SlamSession): Date {
+  const lastCheckTime =
+    session.dailyChecks.length > 0
+      ? new Date(session.dailyChecks[session.dailyChecks.length - 1].date).getTime()
+      : new Date(session.startedAt).getTime()
+  return new Date(lastCheckTime + RETEST_INTERVAL_MS)
+}

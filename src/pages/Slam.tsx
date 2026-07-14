@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useAppData } from '../lib/AppDataContext'
 import { testsForPool, activeSessionForPool } from '../lib/storage'
 import { getSlamFcTarget } from '../lib/slam'
-import { evaluateSlamCheck, isSlamComplete, daysInSlam } from '../lib/slam'
+import { evaluateSlamCheck, isSlamComplete, daysInSlam, getNextRetestDue } from '../lib/slam'
 import type { SlamDailyCheck } from '../types'
+
+const notificationsSupported = typeof window !== 'undefined' && 'Notification' in window
 
 export default function Slam() {
   const { data, activePool, startSlamSession, updateSlamSession } = useAppData()
@@ -17,10 +19,35 @@ export default function Slam() {
   const [checkCloudy, setCheckCloudy] = useState(false)
   const [checkOclt, setCheckOclt] = useState<'pass' | 'fail' | 'not-tested'>('not-tested')
   const [checkNotes, setCheckNotes] = useState('')
+  const [, forceTick] = useState(0)
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
+    notificationsSupported ? Notification.permission : 'unsupported',
+  )
+
+  const session = activePool ? activeSessionForPool(data, activePool.id) : undefined
+
+  // Force a re-render every minute so the "next retest due" countdown and its
+  // overdue styling stay accurate without any other state changing.
+  useEffect(() => {
+    const interval = setInterval(() => forceTick((t) => t + 1), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Best-effort local notification for the next retest — only fires if the
+  // tab/PWA stays open and the OS doesn't suspend it; there's no push server
+  // behind this, so it can't wake a closed app.
+  useEffect(() => {
+    if (!session || notifPermission !== 'granted') return
+    const dueInMs = getNextRetestDue(session).getTime() - Date.now()
+    if (dueInMs <= 0) return
+    const timeoutId = setTimeout(() => {
+      new Notification('Pool Boy — SLAM retest due', { body: 'Time to retest FC and redose if it has dropped.' })
+    }, dueInMs)
+    return () => clearTimeout(timeoutId)
+  }, [session, notifPermission])
 
   if (!activePool) return null
 
-  const session = activeSessionForPool(data, activePool.id)
   const latestTest = testsForPool(data, activePool.id)[0]
 
   if (!session) {
@@ -68,6 +95,8 @@ export default function Slam() {
   const sortedChecks = [...session.dailyChecks].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )
+  const nextDue = getNextRetestDue(session)
+  const overdue = nextDue.getTime() <= Date.now()
 
   function addCheck() {
     if (checkFc === '') return
@@ -104,6 +133,28 @@ export default function Slam() {
           Keep FC at or above <span className="font-bold">{shockTarget} ppm</span> at all times. Retest every 2 hours
           during the day and redose immediately if it drops below target. Run the filter 24/7 and brush daily.
         </p>
+      </div>
+
+      <div
+        className={`rounded-lg border p-3 flex items-center justify-between gap-2 ${
+          overdue
+            ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
+            : 'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300'
+        }`}
+      >
+        <span className="font-medium">
+          {overdue ? 'Retest overdue — ' : 'Next retest due '}
+          {nextDue.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        </span>
+        {notifPermission === 'default' && (
+          <button
+            type="button"
+            onClick={() => Notification.requestPermission().then(setNotifPermission)}
+            className="text-xs underline shrink-0"
+          >
+            Enable alerts
+          </button>
+        )}
       </div>
 
       {complete && (

@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
 import { testsForPool, activeSessionForPool } from '../lib/storage'
 import { assessAll, calculateCsi } from '../lib/chemistry'
+import { detectAnomalies } from '../lib/anomaly'
 import ParamCard from '../components/ParamCard'
+import WeatherCard from '../components/WeatherCard'
 
 const CSI_LABEL: Record<string, string> = {
   corrosive: 'Corrosive — water will etch plaster / corrode metal',
@@ -43,6 +45,7 @@ export default function Dashboard() {
   const csi = calculateCsi(latest, activePool, latest.waterTempF ?? 80)
   const problems = assessments.filter((a) => a.status !== 'ok')
   const age = daysAgo(latest.timestamp)
+  const anomalies = detectAnomalies(tests.slice(1), latest)
 
   return (
     <div className="space-y-6">
@@ -54,6 +57,24 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+
+      {!activeSlam && age >= 4 && (
+        <div
+          className={`rounded-lg border p-3 ${
+            age >= 7
+              ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
+              : 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
+          }`}
+        >
+          <span className="font-medium">
+            {age >= 7
+              ? `It's been ${age} days since your last test — test soon, chemistry can drift fast in swim season.`
+              : `It's been ${age} days since your last test. Worth testing again soon.`}
+          </span>
+        </div>
+      )}
+
+      <WeatherCard />
 
       <div>
         <div className="flex items-baseline justify-between">
@@ -77,6 +98,17 @@ export default function Dashboard() {
         <div className="grid gap-3 sm:grid-cols-2">
           {assessments.map((a) => (
             <ParamCard key={a.key} assessment={a} />
+          ))}
+        </div>
+      )}
+
+      {anomalies.length > 0 && (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/40 p-3 space-y-2">
+          <p className="font-medium text-amber-700 dark:text-amber-300">Unusual change{anomalies.length > 1 ? 's' : ''} from your recent readings</p>
+          {anomalies.map((a) => (
+            <p key={a.key} className="text-sm text-amber-800 dark:text-amber-200">
+              <span className="font-medium">{a.label}:</span> {a.message}
+            </p>
           ))}
         </div>
       )}
