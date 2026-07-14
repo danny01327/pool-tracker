@@ -295,88 +295,211 @@ export function calculateLsi(test: TestEntry, waterTempF = 80): LsiResult | unde
 // a given delta per 10,000 US gallons. Real-world results vary — retest
 // after mixing/circulating and adjust before adding more.
 // ---------------------------------------------------------------------------
+interface DoseProduct {
+  label: string
+  /** amount of product (in `unit`) to shift the reading by 1 ppm per 10,000 gallons */
+  ratePerPpmPer10k: number
+  unit: string
+  sideEffect?: string
+  note?: string
+}
+
+function doseFromRate(delta: number, volumeGallons: number, product: DoseProduct) {
+  const amount = delta > 0 ? product.ratePerPpmPer10k * (volumeGallons / 10000) * delta : 0
+  return { amount: round1(amount), unit: product.unit, label: product.label, sideEffect: product.sideEffect, note: product.note }
+}
+
+function productOptions<T extends string>(rates: Record<T, DoseProduct>) {
+  return (Object.keys(rates) as T[]).map((key) => ({ key, ...rates[key] }))
+}
+
+// --- Chlorine (raise FC) ---------------------------------------------------
 export type ChlorineProduct =
-  | 'liquid_10'
-  | 'liquid_12_5'
+  | 'liquid_5'
   | 'bleach_6'
   | 'bleach_8_25'
+  | 'liquid_10'
+  | 'liquid_12_5'
+  | 'liquid_15'
   | 'cal_hypo_65'
+  | 'cal_hypo_73'
   | 'dichlor_56'
+  | 'trichlor_90'
+  | 'lithium_hypo_35'
 
-const CHLORINE_RATES: Record<ChlorineProduct, { label: string; ozPerPpmPer10k: number; unit: string; sideEffect?: string }> = {
-  liquid_10: { label: 'Liquid chlorine (10%)', ozPerPpmPer10k: 10.7, unit: 'fl oz' },
-  liquid_12_5: { label: 'Liquid pool shock (12.5%)', ozPerPpmPer10k: 8.6, unit: 'fl oz' },
-  bleach_6: { label: 'Household bleach (6%)', ozPerPpmPer10k: 20.5, unit: 'fl oz' },
-  bleach_8_25: { label: 'Pool-grade bleach (8.25%)', ozPerPpmPer10k: 15, unit: 'fl oz' },
+const CHLORINE_RATES: Record<ChlorineProduct, DoseProduct> = {
+  liquid_5: { label: 'Liquid chlorine / bleach (5%)', ratePerPpmPer10k: 26, unit: 'fl oz' },
+  bleach_6: { label: 'Household bleach (6%)', ratePerPpmPer10k: 20.5, unit: 'fl oz' },
+  bleach_8_25: { label: 'Pool-grade bleach (8.25%)', ratePerPpmPer10k: 15, unit: 'fl oz' },
+  liquid_10: { label: 'Liquid chlorine (10%)', ratePerPpmPer10k: 10.7, unit: 'fl oz' },
+  liquid_12_5: { label: 'Liquid pool shock (12.5%)', ratePerPpmPer10k: 8.6, unit: 'fl oz' },
+  liquid_15: { label: 'Liquid chlorine (15%)', ratePerPpmPer10k: 7.2, unit: 'fl oz' },
   cal_hypo_65: {
-    label: 'Cal-hypo (65-73%, dry)',
-    ozPerPpmPer10k: 2.0,
+    label: 'Cal-hypo, 65% (dry)',
+    ratePerPpmPer10k: 2.0,
+    unit: 'oz (dry)',
+    sideEffect: 'Also raises calcium hardness — pre-dissolve and add away from plaster/liner.',
+  },
+  cal_hypo_73: {
+    label: 'Cal-hypo, 73% (dry)',
+    ratePerPpmPer10k: 1.8,
     unit: 'oz (dry)',
     sideEffect: 'Also raises calcium hardness — pre-dissolve and add away from plaster/liner.',
   },
   dichlor_56: {
-    label: 'Dichlor (56%, dry)',
-    ozPerPpmPer10k: 2.5,
+    label: 'Dichlor, 56% (dry)',
+    ratePerPpmPer10k: 2.5,
     unit: 'oz (dry)',
     sideEffect: 'Also raises CYA by roughly 0.9 ppm per ppm of FC added — fine for startup, not for routine dosing.',
+  },
+  trichlor_90: {
+    label: 'Trichlor pucks, 90% (dry)',
+    ratePerPpmPer10k: 1.6,
+    unit: 'oz (dry)',
+    sideEffect:
+      "Not recommended by TFP for routine/shock dosing: it steadily drives CYA up (~0.6 ppm CYA per ppm FC) and is very acidic, pulling down pH and TA. Feeder/floater use only, and stop once CYA is in range.",
+  },
+  lithium_hypo_35: {
+    label: 'Lithium hypochlorite, 35% (dry)',
+    ratePerPpmPer10k: 3.7,
+    unit: 'oz (dry)',
+    sideEffect: "Doesn't raise CYA or calcium hardness — useful for vinyl/fiberglass pools, but expensive for routine use.",
   },
 }
 
 export function doseChlorine(currentFc: number, targetFc: number, volumeGallons: number, product: ChlorineProduct) {
-  const delta = targetFc - currentFc
-  if (delta <= 0) return { amount: 0, unit: CHLORINE_RATES[product].unit, label: CHLORINE_RATES[product].label, sideEffect: CHLORINE_RATES[product].sideEffect }
-  const rate = CHLORINE_RATES[product]
-  const amount = rate.ozPerPpmPer10k * (volumeGallons / 10000) * delta
-  return { amount: round1(amount), unit: rate.unit, label: rate.label, sideEffect: rate.sideEffect }
+  return doseFromRate(targetFc - currentFc, volumeGallons, CHLORINE_RATES[product])
 }
 
 export function chlorineProductOptions() {
-  return (Object.keys(CHLORINE_RATES) as ChlorineProduct[]).map((key) => ({ key, ...CHLORINE_RATES[key] }))
+  return productOptions(CHLORINE_RATES)
 }
 
-export function dosePhIncrease(currentPh: number, targetPh: number, volumeGallons: number) {
-  const delta = Math.max(0, targetPh - currentPh)
-  // ~6 oz soda ash per 10,000 gal raises pH ~0.2 (varies with TA buffering)
-  const amount = (delta / 0.2) * 6 * (volumeGallons / 10000)
-  return { amount: round1(amount), unit: 'oz (dry)', label: 'Soda ash (sodium carbonate)', note: 'Also raises TA slightly. Add slowly with pump running; retest before adding more.' }
+// --- Raise pH ---------------------------------------------------------------
+export type PhUpProduct = 'soda_ash' | 'borax'
+
+const PH_UP_RATES: Record<PhUpProduct, DoseProduct> = {
+  soda_ash: {
+    label: 'Soda ash (sodium carbonate)',
+    ratePerPpmPer10k: 30, // ~6 oz per 10k gal raises pH ~0.2
+    unit: 'oz (dry)',
+    note: 'Also raises TA somewhat. Add slowly, pre-dissolved, with the pump running; retest before adding more.',
+  },
+  borax: {
+    label: 'Borax (20 Mule Team)',
+    ratePerPpmPer10k: 10, // ~1 lb per 10k gal raises pH ~0.1
+    unit: 'lb',
+    note: 'Raises pH with little effect on TA, and adds some borates as a bonus. Dissolve first; retest before adding more.',
+  },
 }
 
-export function doseAcidForTaReduction(currentTa: number, targetTa: number, volumeGallons: number) {
-  const delta = Math.max(0, currentTa - targetTa)
-  // ~25 fl oz muriatic acid (31.45%) per 10,000 gal lowers TA by ~10 ppm
-  const amount = (delta / 10) * 25 * (volumeGallons / 10000)
-  return {
-    amount: round1(amount),
-    unit: 'fl oz',
+export function dosePhIncrease(currentPh: number, targetPh: number, volumeGallons: number, product: PhUpProduct = 'soda_ash') {
+  return doseFromRate(targetPh - currentPh, volumeGallons, PH_UP_RATES[product])
+}
+
+export function phUpProductOptions() {
+  return productOptions(PH_UP_RATES)
+}
+
+// --- Lower TA (and pH) --------------------------------------------------
+export type TaLowerProduct = 'muriatic_acid' | 'dry_acid'
+
+const TA_LOWER_RATES: Record<TaLowerProduct, DoseProduct> = {
+  muriatic_acid: {
     label: 'Muriatic acid (31.45%)',
+    ratePerPpmPer10k: 2.5, // ~25 fl oz per 10k gal lowers TA by 10 ppm
+    unit: 'fl oz',
     note: 'Pour in front of a return with pump running, in one spot, then aerate (fountains/waterfall/spa jets) for a few hours to bring pH back up without raising TA again.',
-  }
+  },
+  dry_acid: {
+    label: 'Dry acid (sodium bisulfate)',
+    ratePerPpmPer10k: 0.35, // ~3.5 lb per 10k gal lowers TA by 10 ppm
+    unit: 'lb',
+    note: 'Pre-dissolve in a bucket of water, pour in front of a return, then aerate to bring pH back up. Adds sulfate — muriatic acid is generally preferred for large/frequent doses.',
+  },
 }
 
+export function doseAcidForTaReduction(currentTa: number, targetTa: number, volumeGallons: number, product: TaLowerProduct = 'muriatic_acid') {
+  return doseFromRate(currentTa - targetTa, volumeGallons, TA_LOWER_RATES[product])
+}
+
+export function taLowerProductOptions() {
+  return productOptions(TA_LOWER_RATES)
+}
+
+// --- Raise TA ----------------------------------------------------------
 export function doseBakingSodaForTa(currentTa: number, targetTa: number, volumeGallons: number) {
-  const delta = Math.max(0, targetTa - currentTa)
-  const amount = (delta / 10) * 1.5 * (volumeGallons / 10000)
-  return { amount: round1(amount), unit: 'lb', label: 'Baking soda (sodium bicarbonate)', note: 'Dissolve and add with pump running. Retest after an hour of circulation.' }
+  return doseFromRate(targetTa - currentTa, volumeGallons, {
+    label: 'Baking soda (sodium bicarbonate)',
+    ratePerPpmPer10k: 0.15,
+    unit: 'lb',
+    note: 'Dissolve and add with pump running. Retest after an hour of circulation.',
+  })
 }
 
-export function doseCalciumChloride(currentCh: number, targetCh: number, volumeGallons: number) {
-  const delta = Math.max(0, targetCh - currentCh)
-  const amount = (delta / 10) * 1.25 * (volumeGallons / 10000)
-  return { amount: round1(amount), unit: 'lb', label: 'Calcium chloride (77% dihydrate)', note: 'Pre-dissolve in a bucket of water before adding — it heats up. Add slowly with pump running.' }
+// --- Raise calcium hardness ----------------------------------------------
+export type ChProduct = 'calcium_chloride_dihydrate' | 'calcium_chloride_anhydrous'
+
+const CH_RATES: Record<ChProduct, DoseProduct> = {
+  calcium_chloride_dihydrate: {
+    label: 'Calcium chloride, dihydrate (~77%)',
+    ratePerPpmPer10k: 0.125,
+    unit: 'lb',
+    note: 'Pre-dissolve in a bucket of water before adding — it heats up. Add slowly with pump running.',
+  },
+  calcium_chloride_anhydrous: {
+    label: 'Calcium chloride, anhydrous (~94-97%)',
+    ratePerPpmPer10k: 0.1,
+    unit: 'lb',
+    note: 'More concentrated than dihydrate, so less is needed by weight. Pre-dissolve — it heats up. Add slowly with pump running.',
+  },
 }
 
-export function doseCya(currentCya: number, targetCya: number, volumeGallons: number) {
-  const delta = Math.max(0, targetCya - currentCya)
-  const amount = (delta / 10) * 1.3 * (volumeGallons / 10000)
-  return { amount: round1(amount), unit: 'lb', label: 'Cyanuric acid (stabilizer/conditioner)', note: 'Dissolves slowly — put in a sock in front of a return jet, or in the skimmer basket with pump running, and check again in a week.' }
+export function doseCalciumChloride(currentCh: number, targetCh: number, volumeGallons: number, product: ChProduct = 'calcium_chloride_dihydrate') {
+  return doseFromRate(targetCh - currentCh, volumeGallons, CH_RATES[product])
 }
 
+export function chProductOptions() {
+  return productOptions(CH_RATES)
+}
+
+// --- Raise CYA -----------------------------------------------------------
+export type CyaProduct = 'granular' | 'liquid'
+
+const CYA_RATES: Record<CyaProduct, DoseProduct> = {
+  granular: {
+    label: 'Cyanuric acid, granular (stabilizer/conditioner)',
+    ratePerPpmPer10k: 0.13,
+    unit: 'lb',
+    note: 'Dissolves slowly — put in a sock in front of a return jet, or in the skimmer basket with pump running, and check again in a week.',
+  },
+  liquid: {
+    label: 'Liquid conditioner',
+    ratePerPpmPer10k: 0.4,
+    unit: 'fl oz',
+    note: 'Liquid conditioner concentration varies a lot by brand — this is a rough estimate. Check the product label, add slowly, and retest before adding more.',
+  },
+}
+
+export function doseCya(currentCya: number, targetCya: number, volumeGallons: number, product: CyaProduct = 'granular') {
+  return doseFromRate(targetCya - currentCya, volumeGallons, CYA_RATES[product])
+}
+
+export function cyaProductOptions() {
+  return productOptions(CYA_RATES)
+}
+
+// --- Raise salt (SWG pools) -----------------------------------------------
 export function doseSalt(currentSalt: number, targetSalt: number, volumeGallons: number) {
-  const delta = Math.max(0, targetSalt - currentSalt)
-  const amount = (delta / 100) * 8.3 * (volumeGallons / 10000)
-  return { amount: round1(amount), unit: 'lb', label: 'Pool salt (NaCl, 99%+ pure)', note: 'Broadcast around the pool with pump running; brush any that settles. Retest after it fully dissolves (a few hours).' }
+  return doseFromRate(targetSalt - currentSalt, volumeGallons, {
+    label: 'Pool salt (NaCl, 99%+ pure)',
+    ratePerPpmPer10k: 0.083,
+    unit: 'lb',
+    note: 'Broadcast around the pool with pump running; brush any that settles. Retest after it fully dissolves (a few hours).',
+  })
 }
 
+// --- Raise borates ---------------------------------------------------------
 export function doseBorates(currentBorates: number, targetBorates: number, volumeGallons: number) {
   const delta = Math.max(0, targetBorates - currentBorates)
   const boraxLb = (delta / 10) * 1.75 * (volumeGallons / 10000)
@@ -386,5 +509,28 @@ export function doseBorates(currentBorates: number, targetBorates: number, volum
     unit: 'lb borax + acid',
     label: 'Borax (20 Mule Team) + muriatic acid',
     note: `Approx. ${round1(boraxLb)} lb borax plus ${round1(acidOz)} fl oz muriatic acid to neutralize the pH bump. This is a rough estimate — add borax first, then acid to bring pH back to target, and retest.`,
+  }
+}
+
+export function doseBoricAcidForBorates(currentBorates: number, targetBorates: number, volumeGallons: number) {
+  return doseFromRate(targetBorates - currentBorates, volumeGallons, {
+    label: 'Boric acid',
+    ratePerPpmPer10k: 0.14,
+    unit: 'lb',
+    note: 'Simpler than borax + acid since no neutralizing acid is needed, but boric acid is mildly acidic — recheck pH afterward and add a little soda ash if it drops too far.',
+  })
+}
+
+// --- Non-chlorine (oxidizer) shock -----------------------------------------
+export type MpsIntensity = 'maintenance' | 'shock'
+
+export function doseNonChlorineShock(volumeGallons: number, intensity: MpsIntensity = 'maintenance') {
+  const lbPer10k = intensity === 'shock' ? 2.5 : 1
+  const amount = lbPer10k * (volumeGallons / 10000)
+  return {
+    amount: round1(amount),
+    unit: 'lb',
+    label: 'Non-chlorine shock (potassium monopersulfate / MPS)',
+    note: "Oxidizes combined chlorine and organics without adding FC — handy after heavy bather load. Doesn't kill algae and isn't a substitute for chlorine; wait per product label (often 15-30 min) before swimming or retesting FC.",
   }
 }
