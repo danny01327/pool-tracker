@@ -236,8 +236,11 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
 }
 
 // ---------------------------------------------------------------------------
-// Langelier Saturation Index (LSI) — classic Taylor-style factor tables.
-// LSI = pH + TF (temp) + CF (calcium) + AF (alkalinity) - 12.1
+// Calcite (Calcium Carbonate) Saturation Index — the water-balance number
+// TFP/Orenda/Taylor test kits call "CSI" (the pool-chemistry name for what's
+// scientifically the Langelier Saturation Index, LSI — same formula, same
+// thing, different industries' preferred name).
+// CSI = pH + TF (temp) + CF (calcium) + AF (alkalinity) - TDS-based constant
 // Target band roughly -0.3 to +0.3; negative = corrosive, positive = scaling.
 // ---------------------------------------------------------------------------
 function interpolateTable(table: Array<[number, number]>, x: number): number {
@@ -269,24 +272,42 @@ const ALKALINITY_FACTOR: Array<[number, number]> = [
   [150, 2.2], [200, 2.3], [250, 2.4], [300, 2.5], [400, 2.6], [800, 2.9],
 ]
 
-export interface LsiResult {
-  lsi: number
-  status: 'corrosive' | 'balanced' | 'scaling'
-  correctedTa: number
+// The additive constant is itself slightly TDS-dependent (Taylor/Orenda
+// tables). This mostly matters for SWG pools, where salt alone can push
+// TDS past 2000 ppm.
+function tdsConstant(tdsPpm: number): number {
+  if (tdsPpm < 1000) return 12.1
+  if (tdsPpm < 2000) return 12.2
+  return 12.3
 }
 
-export function calculateLsi(test: TestEntry, waterTempF = 80): LsiResult | undefined {
+/** Estimate total dissolved solids when the user hasn't measured it directly. */
+export function estimateTds(test: TestEntry, profile: PoolProfile): number {
+  const baseline = 500 // typical dissolved solids from fill water + added chemicals
+  if (profile.sanitizerType === 'salt') return (test.salt ?? 0) + baseline
+  return baseline
+}
+
+export interface CsiResult {
+  csi: number
+  status: 'corrosive' | 'balanced' | 'scaling'
+  correctedTa: number
+  tdsPpm: number
+}
+
+export function calculateCsi(test: TestEntry, profile: PoolProfile, waterTempF = 80): CsiResult | undefined {
   if (test.ph === undefined || test.ta === undefined || test.ch === undefined) return undefined
   const cya = test.cya ?? 0
   // Roughly a third of measured TA comes from CYA buffering rather than
-  // true carbonate alkalinity — subtract it for a more accurate LSI.
+  // true carbonate alkalinity — subtract it for a more accurate CSI.
   const correctedTa = Math.max(0, test.ta - cya / 3)
+  const tdsPpm = test.tds ?? estimateTds(test, profile)
   const tf = interpolateTable(TEMP_FACTOR, waterTempF)
   const cf = interpolateTable(CALCIUM_FACTOR, test.ch)
   const af = interpolateTable(ALKALINITY_FACTOR, correctedTa)
-  const lsi = test.ph + tf + cf + af - 12.1
-  const status = lsi < -0.3 ? 'corrosive' : lsi > 0.3 ? 'scaling' : 'balanced'
-  return { lsi: Math.round(lsi * 100) / 100, status, correctedTa: Math.round(correctedTa) }
+  const csi = test.ph + tf + cf + af - tdsConstant(tdsPpm)
+  const status = csi < -0.3 ? 'corrosive' : csi > 0.3 ? 'scaling' : 'balanced'
+  return { csi: Math.round(csi * 100) / 100, status, correctedTa: Math.round(correctedTa), tdsPpm: Math.round(tdsPpm) }
 }
 
 // ---------------------------------------------------------------------------

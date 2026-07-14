@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
 import { testsForPool, activeSessionForPool } from '../lib/storage'
-import { assessAll, calculateLsi } from '../lib/chemistry'
+import { assessAll, calculateCsi } from '../lib/chemistry'
 import ParamCard from '../components/ParamCard'
 
-const LSI_LABEL: Record<string, string> = {
+const CSI_LABEL: Record<string, string> = {
   corrosive: 'Corrosive — water will etch plaster / corrode metal',
   balanced: 'Balanced',
   scaling: 'Scale-forming — expect calcium buildup, especially on heaters',
 }
 
-const LSI_STYLE: Record<string, string> = {
+const CSI_STYLE: Record<string, string> = {
   corrosive: 'text-amber-600 dark:text-amber-400',
   balanced: 'text-emerald-600 dark:text-emerald-400',
   scaling: 'text-rose-600 dark:text-rose-400',
@@ -40,7 +40,7 @@ export default function Dashboard() {
   }
 
   const assessments = assessAll(latest, activePool)
-  const lsi = calculateLsi(latest, latest.waterTempF ?? 80)
+  const csi = calculateCsi(latest, activePool, latest.waterTempF ?? 80)
   const problems = assessments.filter((a) => a.status !== 'ok')
   const age = daysAgo(latest.timestamp)
 
@@ -81,13 +81,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {lsi && (
+      {csi && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
           <div className="flex items-baseline justify-between">
-            <span className="font-medium">Langelier Saturation Index (water balance)</span>
-            <span className={`font-bold ${LSI_STYLE[lsi.status]}`}>{lsi.lsi}</span>
+            <span className="font-medium">CSI (Calcite Saturation Index)</span>
+            <span className={`font-bold ${CSI_STYLE[csi.status]}`}>{csi.csi}</span>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{LSI_LABEL[lsi.status]}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{CSI_LABEL[csi.status]}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Target -0.3 to +0.3. Uses TDS {csi.tdsPpm} ppm ({latest.tds !== undefined ? 'measured' : 'estimated'}) —
+            enter a measured TDS on the test form for a more precise number.
+          </p>
         </div>
       )}
 

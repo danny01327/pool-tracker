@@ -25,6 +25,7 @@ export default function LogTest() {
   const [ch, setCh] = useState('')
   const [cya, setCya] = useState('')
   const [salt, setSalt] = useState('')
+  const [tds, setTds] = useState('')
   const [waterTempF, setWaterTempF] = useState('')
   const [notes, setNotes] = useState('')
 
@@ -43,6 +44,7 @@ export default function LogTest() {
       ch: numOrUndef(ch),
       cya: numOrUndef(cya),
       salt: numOrUndef(salt),
+      tds: numOrUndef(tds),
       waterTempF: numOrUndef(waterTempF),
       notes: notes.trim() || undefined,
     })
@@ -87,6 +89,7 @@ export default function LogTest() {
         {field('field-cya', 'Cyanuric Acid (CYA)', cya, setCya, 'ppm', '1')}
         {activePool.sanitizerType === 'salt' && field('field-salt', 'Salt', salt, setSalt, 'ppm', '1')}
         {field('field-temp', 'Water Temp', waterTempF, setWaterTempF, '°F', '1')}
+        {field('field-tds', 'TDS (optional, for CSI)', tds, setTds, 'ppm', '1')}
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Notes</label>

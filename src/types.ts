@@ -22,6 +22,7 @@ export interface TestEntry {
   ch?: number
   cya?: number
   salt?: number
+  tds?: number
   waterTempF?: number
   notes?: string
 }
