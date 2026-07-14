@@ -50,7 +50,11 @@ export default function Slam() {
           Shock FC target: <span className="font-bold">{shockTarget} ppm</span>
         </p>
         <button
-          onClick={() => startSlamSession(activePool.id, Number(startCya) || defaultCya)}
+          onClick={() =>
+            startSlamSession(activePool.id, Number(startCya) || defaultCya).catch((err) =>
+              alert(`Failed to start SLAM: ${err.message ?? err}`),
+            )
+          }
           className="rounded bg-rose-600 text-white px-4 py-2 font-medium hover:bg-rose-700"
         >
           Start SLAM
@@ -77,7 +81,9 @@ export default function Slam() {
       oclt: checkOclt,
       notes: checkNotes.trim() || undefined,
     }
-    updateSlamSession(session!.id, { dailyChecks: [...session!.dailyChecks, newCheck] })
+    updateSlamSession(session!.id, { dailyChecks: [...session!.dailyChecks, newCheck] }).catch((err) =>
+      alert(`Failed to save check: ${err.message ?? err}`),
+    )
     setCheckFc('')
     setCheckPh('')
     setCheckCc('')
@@ -107,7 +113,11 @@ export default function Slam() {
             targets.
           </p>
           <button
-            onClick={() => updateSlamSession(session.id, { completedAt: new Date().toISOString() })}
+            onClick={() =>
+              updateSlamSession(session.id, { completedAt: new Date().toISOString() }).catch((err) =>
+                alert(`Failed to update SLAM session: ${err.message ?? err}`),
+              )
+            }
             className="rounded bg-emerald-600 text-white px-4 py-2 font-medium hover:bg-emerald-700"
           >
             Mark SLAM complete

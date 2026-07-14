@@ -11,7 +11,10 @@ export default function Onboarding() {
         <p className="text-center text-gray-600 dark:text-gray-400">
           Let's set up your pool so recommendations are tailored to it.
         </p>
-        <PoolForm onSubmit={(values) => addPool(values)} submitLabel="Create pool" />
+        <PoolForm
+          onSubmit={(values) => addPool(values).catch((err) => alert(`Failed to create pool: ${err.message ?? err}`))}
+          submitLabel="Create pool"
+        />
       </div>
     </div>
   )

@@ -70,7 +70,9 @@ export default function History() {
                 <td className="py-2 pr-3">
                   <button
                     onClick={() => {
-                      if (confirm('Delete this test result?')) deleteTest(t.id)
+                      if (confirm('Delete this test result?')) {
+                        deleteTest(t.id).catch((err) => alert(`Delete failed: ${err.message ?? err}`))
+                      }
                     }}
                     className="text-rose-600 dark:text-rose-400 hover:underline"
                   >

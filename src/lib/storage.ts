@@ -1,31 +1,5 @@
 import type { AppData, PoolProfile, TestEntry, SlamSession } from '../types'
 
-const STORAGE_KEY = 'pool-tracker:data:v1'
-
-function emptyData(): AppData {
-  return { pools: [], activePoolId: null, tests: [], slamSessions: [] }
-}
-
-export function loadData(): AppData {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return emptyData()
-  try {
-    const parsed = JSON.parse(raw) as Partial<AppData>
-    return {
-      pools: parsed.pools ?? [],
-      activePoolId: parsed.activePoolId ?? null,
-      tests: parsed.tests ?? [],
-      slamSessions: parsed.slamSessions ?? [],
-    }
-  } catch {
-    return emptyData()
-  }
-}
-
-export function saveData(data: AppData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-}
-
 export function exportDataAsJson(data: AppData): string {
   return JSON.stringify(data, null, 2)
 }

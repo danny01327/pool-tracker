@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { useAppData } from '../lib/AppDataContext'
+import { useAuth } from '../lib/AuthContext'
 import PoolForm from '../components/PoolForm'
 import { exportDataAsJson, importDataFromJson } from '../lib/storage'
 
 export default function Settings() {
-  const { data, activePool, updatePool, addPool, deletePool, setActivePoolId, replaceAll } = useAppData()
+  const { data, activePool, updatePool, addPool, deletePool, setActivePoolId, importBackup } = useAppData()
+  const { user, signOut } = useAuth()
   const [addingPool, setAddingPool] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -26,8 +28,8 @@ export default function Settings() {
     reader.onload = () => {
       try {
         const imported = importDataFromJson(String(reader.result))
-        if (confirm('This will replace all current data with the imported backup. Continue?')) {
-          replaceAll(imported)
+        if (confirm('This will add the pools and test history from this backup to your account. Continue?')) {
+          importBackup(imported).catch((err) => alert(`Import failed: ${err.message ?? err}`))
         }
       } catch {
         alert('Could not read that file — is it a valid Pool Tracker backup?')
@@ -46,7 +48,7 @@ export default function Settings() {
         <PoolForm
           key={activePool.id}
           initial={activePool}
-          onSubmit={(values) => updatePool(activePool.id, values)}
+          onSubmit={(values) => updatePool(activePool.id, values).catch((err) => alert(`Save failed: ${err.message ?? err}`))}
           submitLabel="Save changes"
         />
       </div>
@@ -66,7 +68,9 @@ export default function Settings() {
                   )}
                   <button
                     onClick={() => {
-                      if (confirm(`Delete "${p.name}" and all its test history? This cannot be undone.`)) deletePool(p.id)
+                      if (confirm(`Delete "${p.name}" and all its test history? This cannot be undone.`)) {
+                        deletePool(p.id).catch((err) => alert(`Delete failed: ${err.message ?? err}`))
+                      }
                     }}
                     className="underline text-rose-600 dark:text-rose-400"
                   >
@@ -86,7 +90,8 @@ export default function Settings() {
             <PoolForm
               onSubmit={(values) => {
                 addPool(values)
-                setAddingPool(false)
+                  .then(() => setAddingPool(false))
+                  .catch((err) => alert(`Save failed: ${err.message ?? err}`))
               }}
               onCancel={() => setAddingPool(false)}
               submitLabel="Add pool"
@@ -117,9 +122,17 @@ export default function Settings() {
           <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImportFile} />
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          All data is stored only in this browser. Export a backup periodically, especially before clearing browser
-          data or switching devices.
+          Your test history is stored in your account and synced across any device you sign in on. Export a backup
+          occasionally as an extra safety net.
         </p>
+      </div>
+
+      <div>
+        <h2 className="font-medium mb-2">Account</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Signed in as {user?.email}</p>
+        <button onClick={() => signOut()} className="rounded border border-gray-300 dark:border-gray-600 px-4 py-2">
+          Sign out
+        </button>
       </div>
     </div>
   )

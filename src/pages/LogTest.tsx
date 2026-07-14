@@ -31,24 +31,32 @@ export default function LogTest() {
 
   if (!activePool) return null
 
-  function handleSubmit(e: React.FormEvent) {
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!activePool) return
-    addTest({
-      poolId: activePool.id,
-      timestamp: new Date(timestamp).toISOString(),
-      fc: numOrUndef(fc),
-      cc: numOrUndef(cc),
-      ph: numOrUndef(ph),
-      ta: numOrUndef(ta),
-      ch: numOrUndef(ch),
-      cya: numOrUndef(cya),
-      salt: numOrUndef(salt),
-      tds: numOrUndef(tds),
-      waterTempF: numOrUndef(waterTempF),
-      notes: notes.trim() || undefined,
-    })
-    navigate('/')
+    setSaving(true)
+    try {
+      await addTest({
+        poolId: activePool.id,
+        timestamp: new Date(timestamp).toISOString(),
+        fc: numOrUndef(fc),
+        cc: numOrUndef(cc),
+        ph: numOrUndef(ph),
+        ta: numOrUndef(ta),
+        ch: numOrUndef(ch),
+        cya: numOrUndef(cya),
+        salt: numOrUndef(salt),
+        tds: numOrUndef(tds),
+        waterTempF: numOrUndef(waterTempF),
+        notes: notes.trim() || undefined,
+      })
+      navigate('/')
+    } catch (err: any) {
+      alert(`Failed to save test: ${err.message ?? err}`)
+      setSaving(false)
+    }
   }
 
   const field = (id: string, label: string, value: string, setValue: (v: string) => void, unit: string, step = '0.1') => (
@@ -101,8 +109,12 @@ export default function LogTest() {
           placeholder="Chemicals added, weather, bather load, anything unusual..."
         />
       </div>
-      <button type="submit" className="rounded bg-sky-600 text-white px-4 py-2 font-medium hover:bg-sky-700">
-        Save test
+      <button
+        type="submit"
+        disabled={saving}
+        className="rounded bg-sky-600 text-white px-4 py-2 font-medium hover:bg-sky-700 disabled:opacity-60"
+      >
+        {saving ? 'Saving…' : 'Save test'}
       </button>
     </form>
   )
