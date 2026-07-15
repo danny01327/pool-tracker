@@ -9,7 +9,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <div className="max-w-md w-full space-y-4">
         <div className="text-center">
-          <AppLogo heightClass="h-16" />
+          <AppLogo heightClass="h-20" />
         </div>
         <p className="text-center text-gray-600 dark:text-gray-400">
           Let's set up your pool so recommendations are tailored to it.

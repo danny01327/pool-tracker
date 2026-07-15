@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
 
 function toLocalDateInput(d: Date): string {
@@ -18,47 +18,65 @@ function numOrUndef(v: string): number | undefined {
   return Number.isNaN(n) ? undefined : n
 }
 
-export default function LogTest() {
-  const { activePool, addTest } = useAppData()
-  const navigate = useNavigate()
+function numToStr(n: number | undefined): string {
+  return n !== undefined ? String(n) : ''
+}
 
-  const [date, setDate] = useState(toLocalDateInput(new Date()))
-  const [time, setTime] = useState(toLocalTimeInput(new Date()))
-  const [fc, setFc] = useState('')
-  const [cc, setCc] = useState('')
-  const [ph, setPh] = useState('')
-  const [ta, setTa] = useState('')
-  const [ch, setCh] = useState('')
-  const [cya, setCya] = useState('')
-  const [salt, setSalt] = useState('')
-  const [tds, setTds] = useState('')
-  const [waterTempF, setWaterTempF] = useState('')
-  const [notes, setNotes] = useState('')
+export default function LogTest() {
+  const { activePool, data, addTest, updateTest } = useAppData()
+  const navigate = useNavigate()
+  const { testId } = useParams()
+
+  const existing = testId ? data.tests.find((t) => t.id === testId) : undefined
+  const isEditing = !!testId
+  const initialDate = existing ? new Date(existing.timestamp) : new Date()
+
+  const [date, setDate] = useState(toLocalDateInput(initialDate))
+  const [time, setTime] = useState(toLocalTimeInput(initialDate))
+  const [fc, setFc] = useState(numToStr(existing?.fc))
+  const [cc, setCc] = useState(numToStr(existing?.cc))
+  const [ph, setPh] = useState(numToStr(existing?.ph))
+  const [ta, setTa] = useState(numToStr(existing?.ta))
+  const [ch, setCh] = useState(numToStr(existing?.ch))
+  const [cya, setCya] = useState(numToStr(existing?.cya))
+  const [salt, setSalt] = useState(numToStr(existing?.salt))
+  const [tds, setTds] = useState(numToStr(existing?.tds))
+  const [waterTempF, setWaterTempF] = useState(numToStr(existing?.waterTempF))
+  const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [saving, setSaving] = useState(false)
 
   if (!activePool) return null
 
-  const [saving, setSaving] = useState(false)
+  if (isEditing && !existing) {
+    return <p className="text-gray-500">That test entry couldn't be found.</p>
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!activePool) return
     setSaving(true)
+    const values = {
+      poolId: activePool.id,
+      timestamp: new Date(`${date}T${time}`).toISOString(),
+      fc: numOrUndef(fc),
+      cc: numOrUndef(cc),
+      ph: numOrUndef(ph),
+      ta: numOrUndef(ta),
+      ch: numOrUndef(ch),
+      cya: numOrUndef(cya),
+      salt: numOrUndef(salt),
+      tds: numOrUndef(tds),
+      waterTempF: numOrUndef(waterTempF),
+      notes: notes.trim() || undefined,
+    }
     try {
-      await addTest({
-        poolId: activePool.id,
-        timestamp: new Date(`${date}T${time}`).toISOString(),
-        fc: numOrUndef(fc),
-        cc: numOrUndef(cc),
-        ph: numOrUndef(ph),
-        ta: numOrUndef(ta),
-        ch: numOrUndef(ch),
-        cya: numOrUndef(cya),
-        salt: numOrUndef(salt),
-        tds: numOrUndef(tds),
-        waterTempF: numOrUndef(waterTempF),
-        notes: notes.trim() || undefined,
-      })
-      navigate('/')
+      if (isEditing && existing) {
+        await updateTest(existing.id, values)
+        navigate('/history')
+      } else {
+        await addTest(values)
+        navigate('/')
+      }
     } catch (err: any) {
       alert(`Failed to save test: ${err.message ?? err}`)
       setSaving(false)
@@ -84,7 +102,7 @@ export default function LogTest() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-      <h1 className="text-xl font-semibold">Log a test</h1>
+      <h1 className="text-xl font-semibold">{isEditing ? 'Edit test' : 'Log a test'}</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label htmlFor="field-date" className="block text-sm font-medium mb-1">
@@ -137,7 +155,7 @@ export default function LogTest() {
         disabled={saving}
         className="rounded bg-sky-600 text-white px-4 py-2 font-medium hover:bg-sky-700 disabled:opacity-60"
       >
-        {saving ? 'Saving…' : 'Save test'}
+        {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Save test'}
       </button>
     </form>
   )

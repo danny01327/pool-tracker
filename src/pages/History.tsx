@@ -1,7 +1,20 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAppData } from '../lib/AppDataContext'
 import { testsForPool } from '../lib/storage'
 import TrendChart from '../components/TrendChart'
+
+const FIELDS: Array<{ key: 'fc' | 'cc' | 'ph' | 'ta' | 'ch' | 'cya' | 'salt' | 'tds' | 'waterTempF'; label: string }> = [
+  { key: 'fc', label: 'FC' },
+  { key: 'cc', label: 'CC' },
+  { key: 'ph', label: 'pH' },
+  { key: 'ta', label: 'TA' },
+  { key: 'ch', label: 'CH' },
+  { key: 'cya', label: 'CYA' },
+  { key: 'salt', label: 'Salt' },
+  { key: 'tds', label: 'TDS' },
+  { key: 'waterTempF', label: 'Temp' },
+]
 
 export default function History() {
   const { data, activePool, deleteTest } = useAppData()
@@ -41,48 +54,42 @@ export default function History() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-left border-b border-gray-200 dark:border-gray-800">
-              <th className="py-2 pr-3">Date</th>
-              <th className="py-2 pr-3">FC</th>
-              <th className="py-2 pr-3">CC</th>
-              <th className="py-2 pr-3">pH</th>
-              <th className="py-2 pr-3">TA</th>
-              <th className="py-2 pr-3">CH</th>
-              <th className="py-2 pr-3">CYA</th>
-              {activePool.sanitizerType === 'salt' && <th className="py-2 pr-3">Salt</th>}
-              <th className="py-2 pr-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {tests.map((t) => (
-              <tr key={t.id} className="border-b border-gray-100 dark:border-gray-900">
-                <td className="py-2 pr-3 whitespace-nowrap">{new Date(t.timestamp).toLocaleString()}</td>
-                <td className="py-2 pr-3">{t.fc ?? '—'}</td>
-                <td className="py-2 pr-3">{t.cc ?? '—'}</td>
-                <td className="py-2 pr-3">{t.ph ?? '—'}</td>
-                <td className="py-2 pr-3">{t.ta ?? '—'}</td>
-                <td className="py-2 pr-3">{t.ch ?? '—'}</td>
-                <td className="py-2 pr-3">{t.cya ?? '—'}</td>
-                {activePool.sanitizerType === 'salt' && <td className="py-2 pr-3">{t.salt ?? '—'}</td>}
-                <td className="py-2 pr-3">
+      <div className="space-y-3">
+        {tests.map((t) => {
+          const present = FIELDS.filter((f) => t[f.key] !== undefined)
+          return (
+            <div key={t.id} className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-medium">{new Date(t.timestamp).toLocaleString()}</span>
+                <div className="flex gap-3 text-sm shrink-0">
+                  <Link to={`/log/${t.id}`} className="underline text-sky-700 dark:text-sky-400">
+                    Edit
+                  </Link>
                   <button
                     onClick={() => {
                       if (confirm('Delete this test result?')) {
                         deleteTest(t.id).catch((err) => alert(`Delete failed: ${err.message ?? err}`))
                       }
                     }}
-                    className="text-rose-600 dark:text-rose-400 hover:underline"
+                    className="underline text-rose-600 dark:text-rose-400"
                   >
                     Delete
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+              {present.length > 0 && (
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mt-2 text-gray-700 dark:text-gray-300">
+                  {present.map((f) => (
+                    <span key={f.key}>
+                      <span className="text-gray-400">{f.label}:</span> {t[f.key]}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {t.notes && <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-2">{t.notes}</p>}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

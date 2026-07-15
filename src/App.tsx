@@ -33,6 +33,7 @@ function App() {
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="log" element={<LogTest />} />
+        <Route path="log/:testId" element={<LogTest />} />
         <Route path="history" element={<History />} />
         <Route path="calculator" element={<DosingCalculator />} />
         <Route path="slam" element={<Slam />} />

@@ -54,16 +54,20 @@ function testToRow(test: Partial<TestEntry>) {
   const row: Record<string, unknown> = {}
   if (test.poolId !== undefined) row.pool_id = test.poolId
   if (test.timestamp !== undefined) row.timestamp = test.timestamp
-  if (test.fc !== undefined) row.fc = test.fc
-  if (test.cc !== undefined) row.cc = test.cc
-  if (test.ph !== undefined) row.ph = test.ph
-  if (test.ta !== undefined) row.ta = test.ta
-  if (test.ch !== undefined) row.ch = test.ch
-  if (test.cya !== undefined) row.cya = test.cya
-  if (test.salt !== undefined) row.salt = test.salt
-  if (test.tds !== undefined) row.tds = test.tds
-  if (test.waterTempF !== undefined) row.water_temp_f = test.waterTempF
-  if (test.notes !== undefined) row.notes = test.notes
+  // Use "'key' in test" (not "!== undefined") for the optional fields so an
+  // edit that blanks out a previously-set value actually clears it in the
+  // database — the key is still present in the update payload, just with
+  // an undefined/blank value, which we map to null instead of skipping it.
+  if ('fc' in test) row.fc = test.fc ?? null
+  if ('cc' in test) row.cc = test.cc ?? null
+  if ('ph' in test) row.ph = test.ph ?? null
+  if ('ta' in test) row.ta = test.ta ?? null
+  if ('ch' in test) row.ch = test.ch ?? null
+  if ('cya' in test) row.cya = test.cya ?? null
+  if ('salt' in test) row.salt = test.salt ?? null
+  if ('tds' in test) row.tds = test.tds ?? null
+  if ('waterTempF' in test) row.water_temp_f = test.waterTempF ?? null
+  if ('notes' in test) row.notes = test.notes ?? null
   return row
 }
 
