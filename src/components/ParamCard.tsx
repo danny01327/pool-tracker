@@ -29,7 +29,7 @@ export default function ParamCard({ assessment }: { assessment: ParamAssessment 
       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
         Target: {round1(assessment.targetMin)}–{round1(assessment.targetMax)} {assessment.unit}
       </p>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{assessment.message}</p>
+      {assessment.message && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{assessment.message}</p>}
     </div>
   )
 }

@@ -112,7 +112,7 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
   if (test.fc !== undefined) {
     const t = getFcTargets(cya, profile.sanitizerType)
     const status = statusFor(test.fc, t.min, t.targetHigh)
-    let message = `Target ${round1(t.targetLow)}-${round1(t.targetHigh)} ppm for CYA ${round1(cya)}.`
+    let message = ''
     if (test.fc < t.min) {
       message = `Below the minimum of ${round1(t.min)} ppm for this CYA level — algae risk. Add chlorine now.`
     } else if (test.fc < t.targetLow) {
@@ -137,7 +137,7 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
   if (test.cya !== undefined) {
     const t = getCyaTarget(profile)
     const status = statusFor(test.cya, t.min, t.max)
-    let message = `Target ${t.min}-${t.max} ppm.`
+    let message = ''
     if (test.cya < t.min) message = `Low — chlorine will burn off fast in sunlight. Add stabilizer to bring into ${t.min}-${t.max} ppm.`
     else if (test.cya > t.max) message = `High — chlorine effectiveness drops as CYA rises. Cannot be lowered chemically; partial drain/refill is the only fix.`
     results.push({
@@ -156,7 +156,7 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
   // pH
   if (test.ph !== undefined) {
     const status = statusFor(test.ph, PH_TARGET.min, PH_TARGET.max)
-    let message = `Target ${PH_TARGET.idealLow}-${PH_TARGET.idealHigh}.`
+    let message = ''
     if (test.ph < PH_TARGET.min) message = 'Low — can corrode metal and irritate skin/eyes. Add pH increaser (soda ash).'
     else if (test.ph > PH_TARGET.max) message = 'High — chlorine loses effectiveness and scale risk rises. Add muriatic/dry acid.'
     results.push({
@@ -176,7 +176,7 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
   if (test.ta !== undefined) {
     const t = getTaTarget(profile)
     const status = statusFor(test.ta, t.min, t.max)
-    let message = `Target ${t.min}-${t.max} ppm.`
+    let message = ''
     if (test.ta < t.min) message = 'Low — pH can swing unpredictably. Add baking soda.'
     else if (test.ta > t.max) message = 'High — pH will tend to keep rising (pH creep). Add acid, then aerate to hold TA down while pH recovers.'
     results.push({
@@ -196,7 +196,7 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
   if (test.ch !== undefined) {
     const t = getChTarget(profile)
     const status = statusFor(test.ch, t.min, t.max)
-    let message = `Target ${t.min}-${t.max} ppm.`
+    let message = ''
     if (test.ch < t.min) {
       message =
         profile.surfaceType === 'plaster'
@@ -222,7 +222,7 @@ export function assessAll(test: TestEntry, profile: PoolProfile): ParamAssessmen
   if (profile.sanitizerType === 'salt' && test.salt !== undefined) {
     const t = SALT_TARGET_DEFAULT
     const status = statusFor(test.salt, t.min, t.max)
-    let message = `Typical generator range ${t.min}-${t.max} ppm — check your manufacturer's spec.`
+    let message = "This is a typical range — check your manufacturer's spec for the exact target."
     if (test.salt < t.min) message = 'Low — generator may fault or work harder than needed. Add pool salt.'
     else if (test.salt > t.max) message = 'High — some generators fault above their max. Dilute with fresh water if it keeps rising.'
     results.push({
