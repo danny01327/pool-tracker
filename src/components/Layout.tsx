@@ -10,6 +10,7 @@ const tabs = [
   { to: '/history', label: 'History' },
   { to: '/calculator', label: 'Calculator' },
   { to: '/slam', label: 'SLAM' },
+  { to: '/resources', label: 'Resources' },
   { to: '/settings', label: 'Settings' },
 ]
 

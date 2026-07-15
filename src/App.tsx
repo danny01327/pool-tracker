@@ -9,6 +9,7 @@ import LogTest from './pages/LogTest'
 import History from './pages/History'
 import DosingCalculator from './pages/DosingCalculator'
 import Slam from './pages/Slam'
+import Resources from './pages/Resources'
 import Settings from './pages/Settings'
 
 function FullScreenMessage({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ function App() {
         <Route path="history" element={<History />} />
         <Route path="calculator" element={<DosingCalculator />} />
         <Route path="slam" element={<Slam />} />
+        <Route path="resources" element={<Resources />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

@@ -22,6 +22,18 @@ function numToStr(n: number | undefined): string {
   return n !== undefined ? String(n) : ''
 }
 
+// Comparator block test kits (e.g. simple OTO/color-block chlorine and
+// pH testers) only ever read one of a handful of fixed values — most stop
+// at 5 ppm chlorine, beyond which the color block can't distinguish further.
+const QUICK_FC_OPTIONS = ['0', '0.5', '1', '2', '3', '4', '5', '5+']
+const QUICK_PH_OPTIONS = ['6.8', '7.2', '7.5', '7.8', '8.2']
+
+/** "5+" isn't a real number — record it as 5 (the block's ceiling) rather than dropping it. */
+function parseFc(v: string): number | undefined {
+  if (v === '5+') return 5
+  return numOrUndef(v)
+}
+
 export default function LogTest() {
   const { activePool, data, addTest, updateTest } = useAppData()
   const navigate = useNavigate()
@@ -31,6 +43,7 @@ export default function LogTest() {
   const isEditing = !!testId
   const initialDate = existing ? new Date(existing.timestamp) : new Date()
 
+  const [mode, setMode] = useState<'full' | 'quick'>('full')
   const [date, setDate] = useState(toLocalDateInput(initialDate))
   const [time, setTime] = useState(toLocalTimeInput(initialDate))
   const [fc, setFc] = useState(numToStr(existing?.fc))
@@ -51,6 +64,12 @@ export default function LogTest() {
     return <p className="text-gray-500">That test entry couldn't be found.</p>
   }
 
+  function switchMode(next: 'full' | 'quick') {
+    // Keep the number input valid if "5+" was picked in quick mode.
+    if (next === 'full' && fc === '5+') setFc('5')
+    setMode(next)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!activePool) return
@@ -58,7 +77,7 @@ export default function LogTest() {
     const values = {
       poolId: activePool.id,
       timestamp: new Date(`${date}T${time}`).toISOString(),
-      fc: numOrUndef(fc),
+      fc: parseFc(fc),
       cc: numOrUndef(cc),
       ph: numOrUndef(ph),
       ta: numOrUndef(ta),
@@ -100,9 +119,55 @@ export default function LogTest() {
     </div>
   )
 
+  const selectField = (id: string, label: string, value: string, setValue: (v: string) => void, options: string[]) => (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium mb-1">
+        {label}
+      </label>
+      <select
+        id={id}
+        className="w-full h-11 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      >
+        <option value="">—</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
       <h1 className="text-xl font-semibold">{isEditing ? 'Edit test' : 'Log a test'}</h1>
+
+      {!isEditing && (
+        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 text-sm">
+          <button
+            type="button"
+            onClick={() => switchMode('full')}
+            className={`px-3 py-1.5 rounded-md ${mode === 'full' ? 'bg-sky-600 text-white' : 'text-gray-600 dark:text-gray-400'}`}
+          >
+            Full test
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode('quick')}
+            className={`px-3 py-1.5 rounded-md ${mode === 'quick' ? 'bg-sky-600 text-white' : 'text-gray-600 dark:text-gray-400'}`}
+          >
+            Quick test
+          </button>
+        </div>
+      )}
+      {!isEditing && mode === 'quick' && (
+        <p className="text-xs text-gray-500">
+          For a comparator block test kit — chlorine and pH only, picked from the block's fixed color values.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label htmlFor="field-date" className="block text-sm font-medium mb-1">
@@ -129,17 +194,26 @@ export default function LogTest() {
           />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {field('field-fc', 'Free Chlorine (FC)', fc, setFc, 'ppm')}
-        {field('field-cc', 'Combined Chlorine (CC)', cc, setCc, 'ppm')}
-        {field('field-ph', 'pH', ph, setPh, '')}
-        {field('field-ta', 'Total Alkalinity (TA)', ta, setTa, 'ppm', '1')}
-        {field('field-ch', 'Calcium Hardness (CH)', ch, setCh, 'ppm', '1')}
-        {field('field-cya', 'Cyanuric Acid (CYA)', cya, setCya, 'ppm', '1')}
-        {activePool.sanitizerType === 'salt' && field('field-salt', 'Salt', salt, setSalt, 'ppm', '1')}
-        {field('field-temp', 'Water Temp', waterTempF, setWaterTempF, '°F', '1')}
-        {field('field-tds', 'TDS (optional, for CSI)', tds, setTds, 'ppm', '1')}
-      </div>
+
+      {mode === 'quick' && !isEditing ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {selectField('field-fc-quick', 'Chlorine (ppm)', fc, setFc, QUICK_FC_OPTIONS)}
+          {selectField('field-ph-quick', 'pH', ph, setPh, QUICK_PH_OPTIONS)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {field('field-fc', 'Free Chlorine (FC)', fc, setFc, 'ppm')}
+          {field('field-cc', 'Combined Chlorine (CC)', cc, setCc, 'ppm')}
+          {field('field-ph', 'pH', ph, setPh, '')}
+          {field('field-ta', 'Total Alkalinity (TA)', ta, setTa, 'ppm', '1')}
+          {field('field-ch', 'Calcium Hardness (CH)', ch, setCh, 'ppm', '1')}
+          {field('field-cya', 'Cyanuric Acid (CYA)', cya, setCya, 'ppm', '1')}
+          {activePool.sanitizerType === 'salt' && field('field-salt', 'Salt', salt, setSalt, 'ppm', '1')}
+          {field('field-temp', 'Water Temp', waterTempF, setWaterTempF, '°F', '1')}
+          {field('field-tds', 'TDS (optional, for CSI)', tds, setTds, 'ppm', '1')}
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium mb-1">Notes</label>
         <textarea
