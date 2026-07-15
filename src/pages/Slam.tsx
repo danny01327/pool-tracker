@@ -125,7 +125,26 @@ export default function Slam() {
     <div className="space-y-6 max-w-md">
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">SLAM in progress</h1>
-        <span className="text-sm text-gray-500">Day {daysInSlam(session)}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">Day {daysInSlam(session)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                confirm(
+                  "Stop SLAM without meeting the exit criteria? Only do this if you're confident the algae/cloudiness is actually gone — ending early can let it come right back.",
+                )
+              ) {
+                updateSlamSession(session.id, { completedAt: new Date().toISOString() }).catch((err) =>
+                  alert(`Failed to stop SLAM: ${err.message ?? err}`),
+                )
+              }
+            }}
+            className="text-sm underline text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            Stop SLAM
+          </button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 p-3">

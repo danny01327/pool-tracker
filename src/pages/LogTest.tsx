@@ -93,7 +93,7 @@ export default function LogTest() {
         type="number"
         step={step}
         inputMode="decimal"
-        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2"
+        className="w-full h-11 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 appearance-none"
         value={value}
         onChange={(e) => setValue(e.target.value)}
       />
@@ -111,7 +111,7 @@ export default function LogTest() {
           <input
             id="field-date"
             type="date"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2"
+            className="w-full h-11 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 appearance-none"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -123,7 +123,7 @@ export default function LogTest() {
           <input
             id="field-time"
             type="time"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2"
+            className="w-full h-11 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-3 appearance-none"
             value={time}
             onChange={(e) => setTime(e.target.value)}
           />
