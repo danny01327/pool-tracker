@@ -322,7 +322,7 @@ export function calculateCsi(test: TestEntry, profile: PoolProfile, waterTempF =
 // a given delta per 10,000 US gallons. Real-world results vary — retest
 // after mixing/circulating and adjust before adding more.
 // ---------------------------------------------------------------------------
-interface DoseProduct {
+export interface DoseProduct {
   label: string
   /** amount of product (in `unit`) to shift the reading by 1 ppm per 10,000 gallons */
   ratePerPpmPer10k: number
@@ -334,6 +334,12 @@ interface DoseProduct {
 function doseFromRate(delta: number, volumeGallons: number, product: DoseProduct) {
   const amount = delta > 0 ? product.ratePerPpmPer10k * (volumeGallons / 10000) * delta : 0
   return { amount: round1(amount), unit: product.unit, label: product.label, sideEffect: product.sideEffect, note: product.note }
+}
+
+/** Inverse of doseFromRate: given an amount of product already added, how much did (or will) the reading shift? */
+export function effectFromRate(amount: number, volumeGallons: number, product: DoseProduct): number {
+  if (amount <= 0 || volumeGallons <= 0 || product.ratePerPpmPer10k <= 0) return 0
+  return amount / (product.ratePerPpmPer10k * (volumeGallons / 10000))
 }
 
 function productOptions<T extends string>(rates: Record<T, DoseProduct>) {
@@ -402,6 +408,24 @@ export function chlorineProductOptions() {
   return productOptions(CHLORINE_RATES)
 }
 
+// --- Lower FC (neutralize with sodium thiosulfate) --------------------------
+const FC_LOWER_RATES: Record<'sodium_thiosulfate', DoseProduct> = {
+  sodium_thiosulfate: {
+    label: 'Sodium thiosulfate (chlorine neutralizer)',
+    ratePerPpmPer10k: 0.3,
+    unit: 'oz (dry)',
+    note: 'Only for correcting a real overdose — it works fast and is easy to overshoot. For FC that is just a bit high, it is usually simpler to let sunlight and normal usage bring it down. Pre-dissolve, add with the pump running, then wait 15-20 minutes and retest.',
+  },
+}
+
+export function doseChlorineNeutralizer(currentFc: number, targetFc: number, volumeGallons: number) {
+  return doseFromRate(currentFc - targetFc, volumeGallons, FC_LOWER_RATES.sodium_thiosulfate)
+}
+
+export function fcLowerProductOptions() {
+  return productOptions(FC_LOWER_RATES)
+}
+
 // --- Raise pH ---------------------------------------------------------------
 export type PhUpProduct = 'soda_ash' | 'borax'
 
@@ -426,6 +450,32 @@ export function dosePhIncrease(currentPh: number, targetPh: number, volumeGallon
 
 export function phUpProductOptions() {
   return productOptions(PH_UP_RATES)
+}
+
+// --- Lower pH ------------------------------------------------------------
+export type PhDownProduct = 'muriatic_acid' | 'dry_acid'
+
+const PH_DOWN_RATES: Record<PhDownProduct, DoseProduct> = {
+  muriatic_acid: {
+    label: 'Muriatic acid (31.45%)',
+    ratePerPpmPer10k: 100, // ~20 fl oz per 10k gal lowers pH ~0.2 at moderate TA
+    unit: 'fl oz',
+    note: 'How much this actually moves pH depends heavily on TA (higher TA needs more acid for the same drop) — this assumes a moderate TA around 80 ppm. Pour in front of a return with the pump running, wait 30+ minutes, and retest before adding more.',
+  },
+  dry_acid: {
+    label: 'Dry acid (sodium bisulfate)',
+    ratePerPpmPer10k: 14,
+    unit: 'lb',
+    note: 'How much this actually moves pH depends heavily on TA (higher TA needs more acid for the same drop) — this assumes a moderate TA around 80 ppm. Pre-dissolve, add in front of a return, wait 30+ minutes, and retest before adding more.',
+  },
+}
+
+export function dosePhDecrease(currentPh: number, targetPh: number, volumeGallons: number, product: PhDownProduct = 'muriatic_acid') {
+  return doseFromRate(currentPh - targetPh, volumeGallons, PH_DOWN_RATES[product])
+}
+
+export function phDownProductOptions() {
+  return productOptions(PH_DOWN_RATES)
 }
 
 // --- Lower TA (and pH) --------------------------------------------------
@@ -455,13 +505,21 @@ export function taLowerProductOptions() {
 }
 
 // --- Raise TA ----------------------------------------------------------
-export function doseBakingSodaForTa(currentTa: number, targetTa: number, volumeGallons: number) {
-  return doseFromRate(targetTa - currentTa, volumeGallons, {
+const TA_RAISE_RATES: Record<'baking_soda', DoseProduct> = {
+  baking_soda: {
     label: 'Baking soda (sodium bicarbonate)',
     ratePerPpmPer10k: 0.15,
     unit: 'lb',
     note: 'Dissolve and add with pump running. Retest after an hour of circulation.',
-  })
+  },
+}
+
+export function doseBakingSodaForTa(currentTa: number, targetTa: number, volumeGallons: number) {
+  return doseFromRate(targetTa - currentTa, volumeGallons, TA_RAISE_RATES.baking_soda)
+}
+
+export function taRaiseProductOptions() {
+  return productOptions(TA_RAISE_RATES)
 }
 
 // --- Raise calcium hardness ----------------------------------------------
@@ -517,13 +575,21 @@ export function cyaProductOptions() {
 }
 
 // --- Raise salt (SWG pools) -----------------------------------------------
-export function doseSalt(currentSalt: number, targetSalt: number, volumeGallons: number) {
-  return doseFromRate(targetSalt - currentSalt, volumeGallons, {
+const SALT_RATES: Record<'pool_salt', DoseProduct> = {
+  pool_salt: {
     label: 'Pool salt (NaCl, 99%+ pure)',
     ratePerPpmPer10k: 0.083,
     unit: 'lb',
     note: 'Broadcast around the pool with pump running; brush any that settles. Retest after it fully dissolves (a few hours).',
-  })
+  },
+}
+
+export function doseSalt(currentSalt: number, targetSalt: number, volumeGallons: number) {
+  return doseFromRate(targetSalt - currentSalt, volumeGallons, SALT_RATES.pool_salt)
+}
+
+export function saltProductOptions() {
+  return productOptions(SALT_RATES)
 }
 
 // --- Raise borates ---------------------------------------------------------
@@ -539,13 +605,41 @@ export function doseBorates(currentBorates: number, targetBorates: number, volum
   }
 }
 
-export function doseBoricAcidForBorates(currentBorates: number, targetBorates: number, volumeGallons: number) {
-  return doseFromRate(targetBorates - currentBorates, volumeGallons, {
+const BORATES_RATES: Record<'boric_acid', DoseProduct> = {
+  boric_acid: {
     label: 'Boric acid',
     ratePerPpmPer10k: 0.14,
     unit: 'lb',
     note: 'Simpler than borax + acid since no neutralizing acid is needed, but boric acid is mildly acidic — recheck pH afterward and add a little soda ash if it drops too far.',
-  })
+  },
+}
+
+export function doseBoricAcidForBorates(currentBorates: number, targetBorates: number, volumeGallons: number) {
+  return doseFromRate(targetBorates - currentBorates, volumeGallons, BORATES_RATES.boric_acid)
+}
+
+export function boratesProductOptions() {
+  return productOptions(BORATES_RATES)
+}
+
+// --- Lower CH / CYA / salt / borates (no chemical fix — dilution only) -----
+export function doseDilutionForReduction(current: number, target: number, volumeGallons: number, paramLabel: string) {
+  if (current <= target || current <= 0) {
+    return {
+      amount: 0,
+      unit: 'gallons',
+      label: 'Partial drain & refill',
+      note: `Already at or below target — no dilution needed.`,
+    }
+  }
+  const fraction = Math.min(1, (current - target) / current)
+  const gallons = Math.round(fraction * volumeGallons)
+  return {
+    amount: gallons,
+    unit: 'gallons to drain & refill',
+    label: 'Partial drain & refill (dilution)',
+    note: `There's no chemical that reliably lowers ${paramLabel} — dilution with fresh water is the fix. This assumes your fill water has little to no ${paramLabel}; adjust if yours tests higher. Drain roughly ${Math.round(fraction * 100)}% of the pool and refill, then retest.`,
+  }
 }
 
 // --- Non-chlorine (oxidizer) shock -----------------------------------------
